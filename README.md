@@ -1,4 +1,6 @@
-# Packaging an app, starting from this example
+# Earthstar Server for Fly
+
+## Packaging an app, starting from this example
 
 * Copy this app before working on it, using the ['Use this template'](https://github.com/YunoHost/example_ynh/generate) button on the Github repo.
 * Edit the `manifest.json` with app specific info.
@@ -27,27 +29,25 @@ If you don't have YunoHost, please consult [the guide](https://yunohost.org/#/in
 
 ## Overview
 
-Some long and extensive description of what the app is and does, lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+This Yunohost Package will help you deploy an Earthstar server on your own server. The server
+will run on the Node.js runtime.
+
+If you'd like to further customise your server, you can learn more about servers
+and their extensions at the
+[main Earthstar repo](https://github.com/earthstar-project/earthstar/blob/main/README_SERVERS.md).
 
 ### Features
 
-- Ut enim ad minim veniam, quis nostrud exercitation ullamco ;
-- Laboris nisi ut aliquip ex ea commodo consequat ;
-- Duis aute irure dolor in reprehenderit in voluptate ;
-- Velit esse cillum dolore eu fugiat nulla pariatur ;
-- Excepteur sint occaecat cupidatat non proident, sunt in culpa."
+- Syncs your Earthstar Project shares and keeps a copy of the data on your own server
 
 
 **Shipped version:** 1.0~ynh1
 
-**Demo:** https://demo.example.com
-
-## Screenshots
-
-![Screenshot of Example app](./doc/screenshots/example.jpg)
+**Demo:** https://earthstar-project.org
 
 ## Disclaimers / important information
 
+* First time I am trying to make an Yunohost application
 * Any known limitations, constrains or stuff not working, such as (but not limited to):
     * requiring a full dedicated domain ?
     * architectures not supported ?
@@ -55,31 +55,29 @@ Some long and extensive description of what the app is and does, lorem ipsum dol
     * the app requires an important amount of RAM / disk / .. to install or to work properly
     * etc...
 
-* Other infos that people should be aware of, such as:
-    * any specific step to perform after installing (such as manually finishing the install, specific admin credentials, ...)
-    * how to configure / administrate the application if it ain't obvious
-    * upgrade process / specificities / things to be aware of ?
-    * security considerations ?
+* Create a new file called `known_shares.json` in the root of this project. Add
+   the public addresses of the shares you'd like your server to replicate as an
+   array of strings (e.g. `["+one.xxx", "two.xxx"]`).
 
 ## Documentation and resources
 
-* Official app website: <https://example.com>
-* Official user documentation: <https://yunohost.org/apps>
+* Official app website: <https://earthstar-project.org>
+* Official user documentation: <https://github.com/earthstar-project/earthstar/blob/main/README_SERVERS.md>
 * Official admin documentation: <https://yunohost.org/packaging_apps>
-* Upstream app code repository: <https://some.forge.com/example/example>
+* Upstream app code repository: <https://github.com/johanbove/earthstar-server-ynh>
 * YunoHost documentation for this app: <https://yunohost.org/app_example>
 * Report a bug: <https://github.com/YunoHost-Apps/example_ynh/issues>
 
 ## Developer info
 
-Please send your pull request to the [testing branch](https://github.com/YunoHost-Apps/example_ynh/tree/testing).
+Please send your pull request to the [testing branch](https://github.com/johanbove/earthstar-server-ynh/tree/testing).
 
 To try the testing branch, please proceed like that.
 
 ``` bash
-sudo yunohost app install https://github.com/YunoHost-Apps/example_ynh/tree/testing --debug
+sudo yunohost app install https://github.com/johanbove/earthstar-server-ynh/tree/testing --debug
 or
-sudo yunohost app upgrade example -u https://github.com/YunoHost-Apps/example_ynh/tree/testing --debug
+sudo yunohost app upgrade example -u https://github.com/johanbove/earthstar-server-ynh/tree/testing --debug
 ```
 
 **More info regarding app packaging:** <https://yunohost.org/packaging_apps>

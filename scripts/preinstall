@@ -1,0 +1,8 @@
+#!/bin/bash
+
+app=$YNH_APP_INSTANCE_NAME
+
+ynh_app_setting_set --app=$app --key=known_shares --value=$known_shares
+
+# TODO: figure out how to store known_shares into known_shares.json,
+#         so server.js gets it before it is started

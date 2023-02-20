@@ -1,15 +1,18 @@
 [Unit]
-Description=Small description of the service
+Description=__APP__ service
 After=network.target
 
 [Service]
 Type=simple
 User=__APP__
 Group=__APP__
-WorkingDirectory=__INSTALL_DIR__/
-ExecStart=__INSTALL_DIR__/script
+Environment=__YNH_NODE_LOAD_PATH__
+Environment=NODE_ENV=production
+WorkingDirectory=__FINALPATH__
+ExecStart=__YNH_NODE__ __FINALPATH__/server
 StandardOutput=append:/var/log/__APP__/__APP__.log
 StandardError=inherit
+Restart=always
 
 # Sandboxing options to harden security
 # Depending on specificities of your service/app, you may need to tweak these

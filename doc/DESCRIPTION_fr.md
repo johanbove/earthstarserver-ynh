@@ -1,1 +1,1 @@
-Ceci est une fausse description des fonctionalités de l'app
+Exécuter et configurer un serveur Earthstar capable de se synchroniser avec d'autres pairs.

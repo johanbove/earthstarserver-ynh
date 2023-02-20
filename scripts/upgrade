@@ -9,52 +9,44 @@
 source _common.sh
 source /usr/share/yunohost/helpers
 
-# Settings are automatically loaded as bash variables
-# in every app script context, therefore typically these will exist:
-# - $domain
-# - $path
-# - $language
-# - $install_dir
-# - $port
-# ...
+#=================================================
+# LOAD SETTINGS
+#=================================================
+ynh_script_progression --message="Loading installation settings..." --weight=1
 
-# In the context of upgrade,
-# - resources are automatically provisioned / updated / deleted (depending on existing resources)
-# - a safety backup is automatically created by the core and will be restored if the upgrade fails
+app=$YNH_APP_INSTANCE_NAME
 
-### This helper will compare the version of the currently installed app and the version of the upstream package.
-### $upgrade_type can have 2 different values
-### - UPGRADE_APP if the upstream app version has changed
-### - UPGRADE_PACKAGE if only the YunoHost package has changed
-### ynh_check_app_version_changed will stop the upgrade if the app is up to date.
-### UPGRADE_APP should be used to upgrade the core app only if there's an upgrade to do.
+domain=$(ynh_app_setting_get --app=$app --key=domain)
+path_url=$(ynh_app_setting_get --app=$app --key=path)
+port=$(ynh_app_setting_get --app=$app --key=port)
+final_path=$(ynh_app_setting_get --app=$app --key=final_path)
+datadir=$(ynh_app_setting_get --app=$app --key=datadir)
+is_signup=$(ynh_app_setting_get --app=$app --key=is_signup)
+
+#=================================================
+# CHECK VERSION
+#=================================================
+ynh_script_progression --message="Checking version..." --weight=1
+
 upgrade_type=$(ynh_check_app_version_changed)
 
 #=================================================
+# BACKUP BEFORE UPGRADE THEN ACTIVE TRAP
+#=================================================
+ynh_script_progression --message="Backing up the app before upgrading (may take a while)..." --weight=4
+
+# Backup the current version of the app
+ynh_backup_before_upgrade
+ynh_clean_setup () {
+	ynh_clean_check_starting
+	# Restore it if the upgrade fails
+	ynh_restore_upgradebackup
+}
+# Exit if an error occurs during the execution of the script
+ynh_abort_if_errors
+
+#=================================================
 # STANDARD UPGRADE STEPS
-#=================================================
-# ENSURE DOWNWARD COMPATIBILITY
-#=================================================
-#ynh_script_progression --message="Ensuring downward compatibility..." --weight=1
-
-#
-# N.B. : the followings setting migrations snippets are provided as *EXAMPLES*
-# of what you may want to do in some cases (e.g. a setting was not defined on
-# some legacy installs and you therefore want to initiaze stuff during upgrade)
-#
-
-# If db_name doesn't exist, create it
-#if [ -z "$db_name" ]; then
-#	db_name=$(ynh_sanitize_dbid --db_name=$app)
-#	ynh_app_setting_set --app=$app --key=db_name --value=$db_name
-#fi
-
-# If install_dir doesn't exist, create it
-#if [ -z "$install_dir" ]; then
-#	install_dir=/var/www/$app
-#	ynh_app_setting_set --app=$app --key=install_dir --value=$install_dir
-#fi
-
 #=================================================
 # STOP SYSTEMD SERVICE
 #=================================================
@@ -63,69 +55,124 @@ ynh_script_progression --message="Stopping a systemd service..." --weight=1
 ynh_systemd_action --service_name=$app --action="stop" --log_path="/var/log/$app/$app.log"
 
 #=================================================
-# "REBUILD" THE APP (DEPLOY NEW SOURCES, RERUN NPM BUILD, ETC...)
+# ENSURE DOWNWARD COMPATIBILITY
 #=================================================
-# DOWNLOAD, CHECK AND UNPACK SOURCE
+ynh_script_progression --message="Ensuring downward compatibility..." --weight=1
+
+# If is_signup doesn't exist, create it
+if [ -z "$is_signup" ]; then
+	is_signup="true"
+	ynh_app_setting_set --app=$app --key=is_signup --value=$is_signup
+fi
+
+# Cleaning legacy permissions
+if ynh_legacy_permissions_exists; then
+	ynh_legacy_permissions_delete_all
+
+	ynh_app_setting_delete --app=$app --key=is_public
+fi
+
+# Remove old log file
+ynh_secure_remove --file="/var/log/$app/"
+
+if [ -z "$datadir" ]; then
+	ynh_script_progression --message="Creating a data directory..." --weight=1
+
+	ynh_app_setting_set --app=$app --key=datadir --value=$datadir
+
+	# Create app data folder
+	mkdir -p $datadir
+
+	chmod 750 "$datadir"
+	chmod -R o-rwx "$datadir"
+	chown -R $app:www-data "$datadir"
+fi
+
+#=================================================
+# CREATE DEDICATED USER
+#=================================================
+ynh_script_progression --message="Making sure dedicated system user exists..." --weight=1
+
+# Create a dedicated user (if not existing)
+ynh_system_user_create --username=$app --home_dir="$final_path"
+
+#=================================================
+# CHECK AND CREATE FINAL_PATH
+#=================================================
+ynh_script_progression --message="Setting up and create final app path..." --weight=1
+
+# Create final_path
+mkdir -p "$final_path"
+
+chmod 750 "$final_path"
+chmod -R o-rwx "$final_path"
+chown -R $app:$app "$final_path"
+
+#=================================================
+# NGINX CONFIGURATION
+#=================================================
+ynh_script_progression --message="Upgrading NGINX web server configuration..."
+
+# Create a dedicated NGINX config
+ynh_add_nginx_config
+
+#=================================================
+# UPGRADE DEPENDENCIES
+#=================================================
+ynh_script_progression --message="Upgrading dependencies..." --weight=4
+
+ynh_install_nodejs --nodejs_version=$NODEJS_VERSION
+ynh_use_nodejs
+
+#=================================================
+# SPECIFIC UPGRADE
+#=================================================
+# UPGRADE ARMADIETTO
 #=================================================
 
 if [ "$upgrade_type" == "UPGRADE_APP" ]
 then
-	ynh_script_progression --message="Upgrading source files..." --weight=1
+	ynh_script_progression --message="Upgrade Earthstar with npm..." --weight=1
 
-	# Download, check integrity, uncompress and patch the source from app.src
-	ynh_setup_source --dest_dir="$install_dir"
+	pushd $final_path
+		ynh_npm install --verbose
+	popd
 fi
 
-# $install_dir will automatically be initialized with some decent 
-# permission by default ... however, you may need to recursively reapply
-# ownership to all files such as after the ynh_setup_source step
-chown -R $app:www-data "$install_dir"
-
-#=================================================
-# REAPPLY SYSTEM CONFIGURATIONS
-#=================================================
-ynh_script_progression --message="Upgrading system configurations related to $app..." --weight=1
-
-# This should be a literal copypasta of what happened in the install's "System configuration" section
-
-ynh_add_fpm_config
-
-ynh_add_nginx_config
-
-ynh_add_systemd_config
-
-yunohost service add $app --description="A short description of the app" --log="/var/log/$app/$app.log"
-
-ynh_use_logrotate --non-append
-
-ynh_add_fail2ban_config --logpath="/var/log/nginx/${domain}-error.log" --failregex="Regex to match into the log for a failed login"
-
-#=================================================
-# RECONFIGURE THE APP (UPDATE CONF, APPLY MIGRATIONS, ...)
 #=================================================
 # UPDATE A CONFIG FILE
 #=================================================
-ynh_script_progression --message="Updating a configuration file..." --weight=1
+ynh_script_progression --message="Updating a configuration file..." --weight=2
 
-### Same as during install
-###
-### The file will automatically be backed-up if it's found to be manually modified (because
-### ynh_add_config keeps track of the file's checksum)
+ynh_add_config --template="../conf/server.js" --destination="$final_path/server.js"
 
-ynh_add_config --template="some_config_file" --destination="$install_dir/some_config_file"
+chmod 400 "$final_path/server.js"
+chown $app:$app "$final_path/server.js"
 
-# FIXME: this should be handled by the core in the future
-# You may need to use chmod 600 instead of 400,
-# for example if the app is expected to be able to modify its own config
-chmod 400 "$install_dir/some_config_file"
-chown $app:$app "$install_dir/some_config_file"
+#=================================================
+# SETUP SYSTEMD
+#=================================================
+ynh_script_progression --message="Upgrading systemd configuration..." --weight=3
 
-### For more complex cases where you want to replace stuff using regexes,
-### you shoud rely on ynh_replace_string (which is basically a wrapper for sed)
-### When doing so, you also need to manually call ynh_store_file_checksum
-###
-### ynh_replace_string --match_string="match_string" --replace_string="replace_string" --target_file="$install_dir/some_config_file"
-### ynh_store_file_checksum --file="$install_dir/some_config_file"
+# Create a dedicated systemd config
+ynh_add_systemd_config
+
+#=================================================
+# GENERIC FINALIZATION
+#=================================================
+# SETUP LOGROTATE
+#=================================================
+ynh_script_progression --message="Upgrading logrotate configuration..." --weight=2
+
+# Use logrotate to manage app-specific logfile(s)
+ynh_use_logrotate --non-append
+
+#=================================================
+# INTEGRATE SERVICE IN YUNOHOST
+#=================================================
+ynh_script_progression --message="Integrating service in YunoHost..." --weight=1
+
+yunohost service add $app --description="Armadietto run a remotestorage server as service" --log="/var/log/$app/$app.log"
 
 #=================================================
 # START SYSTEMD SERVICE
@@ -133,6 +180,13 @@ chown $app:$app "$install_dir/some_config_file"
 ynh_script_progression --message="Starting a systemd service..." --weight=1
 
 ynh_systemd_action --service_name=$app --action="start" --log_path="/var/log/$app/$app.log"
+
+#=================================================
+# RELOAD NGINX
+#=================================================
+ynh_script_progression --message="Reloading NGINX web server..." --weight=2
+
+ynh_systemd_action --service_name=nginx --action=reload
 
 #=================================================
 # END OF SCRIPT

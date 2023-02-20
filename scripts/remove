@@ -9,28 +9,23 @@
 source _common.sh
 source /usr/share/yunohost/helpers
 
-# Settings are automatically loaded as bash variables
-# in every app script context, therefore typically these will exist:
-# - $domain
-# - $path
-# - $language
-# - $install_dir
-# - $port
-# ...
+#=================================================
+# LOAD SETTINGS
+#=================================================
+ynh_script_progression --message="Loading installation settings..." --weight=2
 
-# For remove operations :
-# - the core will deprovision every resource defined in the manifest **after** this script is ran
-# this includes removing the install directory, and data directory (if --purge was used)
+app=$YNH_APP_INSTANCE_NAME
+
+domain=$(ynh_app_setting_get --app=$app --key=domain)
+port=$(ynh_app_setting_get --app=$app --key=port)
+final_path=$(ynh_app_setting_get --app=$app --key=final_path)
+datadir=$(ynh_app_setting_get --app=$app --key=datadir)
 
 #=================================================
-# REMOVE SYSTEM CONFIGURATIONS
+# STANDARD REMOVE
 #=================================================
-# REMOVE SYSTEMD SERVICE 
+# REMOVE SERVICE INTEGRATION IN YUNOHOST
 #=================================================
-
-ynh_script_progression --message="Removing system configurations related to $app..." --weight=1
-
-# This should be a symetric version of what happens in the install script
 
 # Remove the service from the list of services known by YunoHost (added from `yunohost service add`)
 if ynh_exec_warn_less yunohost service status $app >/dev/null
@@ -39,23 +34,66 @@ then
 	yunohost service remove $app
 fi
 
+#=================================================
+# STOP AND REMOVE SERVICE
+#=================================================
+ynh_script_progression --message="Stopping and removing the systemd service..." --weight=2
+
+# Remove the dedicated systemd config
 ynh_remove_systemd_config
 
-ynh_remove_nginx_config
+#=================================================
+# REMOVE LOGROTATE CONFIGURATION
+#=================================================
+ynh_script_progression --message="Removing logrotate configuration..." --weight=1
 
-ynh_remove_fpm_config
-
+# Remove the app-specific logrotate config
 ynh_remove_logrotate
 
-ynh_remove_fail2ban_config
+#=================================================
+# REMOVE APP MAIN DIR
+#=================================================
+ynh_script_progression --message="Removing app main directory..." --weight=2
 
-# Remove other various files specific to the app... such as :
+# Remove the app directory securely
+ynh_secure_remove --file="$final_path"
 
-ynh_secure_remove --file="/etc/cron.d/$app"
+#=================================================
+# REMOVE DATA DIR
+#=================================================
 
-ynh_secure_remove --file="/etc/$app"
+# Remove the data directory if --purge option is used
+if [ "${YNH_APP_PURGE:-0}" -eq 1 ]
+then
+	ynh_script_progression --message="Removing app data directory..." --weight=1
+	ynh_secure_remove --file="$datadir"
+fi
 
-ynh_secure_remove --file="/var/log/$app"
+#=================================================
+# REMOVE NGINX CONFIGURATION
+#=================================================
+ynh_script_progression --message="Removing NGINX web server configuration..." --weight=1
+
+# Remove the dedicated NGINX config
+ynh_remove_nginx_config
+
+#=================================================
+# REMOVE DEPENDENCIES
+#=================================================
+ynh_script_progression --message="Removing dependencies..." --weight=2
+
+# Remove metapackage and its dependencies
+ynh_remove_nodejs --nodejs_version=$NODEJS_VERSION
+
+#=================================================
+# GENERIC FINALIZATION
+#=================================================
+# REMOVE DEDICATED USER
+#=================================================
+ynh_script_progression --message="Removing the dedicated system user..." --weight=1
+
+# Delete a system user
+ynh_system_user_delete --username=$app
 
 #=================================================
 # END OF SCRIPT
