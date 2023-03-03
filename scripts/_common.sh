@@ -6,7 +6,7 @@
 
 # dependencies used by the app
 
-nodejs_version=16
+NODEJS_VERSION=16
 
 #=================================================
 # PERSONAL HELPERS

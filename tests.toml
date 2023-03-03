@@ -34,7 +34,9 @@ test_format = 1.0
 
     # args.language = "fr_FR"    # NB : you should NOT need those lines unless for custom questions with no obvious/default value
     # args.multisite = 0
-    args.known_shares = "+test.12345"
+    # Literal string
+    # see https://toml.io/en/
+    args.known_shares = '"+space.bnllbqow52wctokvpbxlc5hcuz6qhxjhgrgffvm52uu6wvggblgxa"'
 
     # -------------------------------
     # Commits to test upgrade from

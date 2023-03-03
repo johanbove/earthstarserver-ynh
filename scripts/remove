@@ -85,15 +85,15 @@ ynh_script_progression --message="Removing dependencies..." --weight=2
 # Remove metapackage and its dependencies
 ynh_remove_nodejs --nodejs_version=$NODEJS_VERSION
 
-#=================================================
-# GENERIC FINALIZATION
-#=================================================
-# REMOVE DEDICATED USER
-#=================================================
-ynh_script_progression --message="Removing the dedicated system user..." --weight=1
+# #=================================================
+# # GENERIC FINALIZATION
+# #=================================================
+# # REMOVE DEDICATED USER
+# #=================================================
+# ynh_script_progression --message="Removing the dedicated system user..." --weight=1
 
-# Delete a system user
-ynh_system_user_delete --username=$app
+# # Delete a system user
+# ynh_system_user_delete --username=$app
 
 #=================================================
 # END OF SCRIPT

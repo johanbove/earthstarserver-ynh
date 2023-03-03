@@ -1,15 +1,16 @@
 [Unit]
 Description=__APP__ service
+Documentation=https://github.com/johanbove/earthstarserver-ynh
 After=network.target
 
 [Service]
 Type=simple
 User=__APP__
 Group=__APP__
-Environment=__YNH_NODE_LOAD_PATH__
-Environment=NODE_ENV=production
-WorkingDirectory=__FINALPATH__
-ExecStart=__YNH_NODE__ __FINALPATH__/server
+WorkingDirectory=__INSTALL_DIR__/
+Environment=PORT=__PORT__
+Environment="__YNH_NODE_LOAD_PATH__"
+ExecStart=__YNH_NODE__ server.js
 StandardOutput=append:/var/log/__APP__/__APP__.log
 StandardError=inherit
 Restart=always

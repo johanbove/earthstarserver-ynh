@@ -16,8 +16,6 @@ source /usr/share/yunohost/helpers
 ynh_clean_setup () {
 	ynh_clean_check_starting
 }
-# Exit if an error occurs during the execution of the script
-# ynh_abort_if_errors
 
 #=================================================
 # RETRIEVE ARGUMENTS FROM THE MANIFEST
@@ -26,20 +24,8 @@ ynh_clean_setup () {
 domain=$YNH_APP_ARG_DOMAIN
 path_url="/"
 is_public=$YNH_APP_ARG_IS_PUBLIC
-# is_signup=$YNH_APP_ARG_IS_SIGNUP
 
 app=$YNH_APP_INSTANCE_NAME
-
-#=================================================
-# CHECK IF THE APP CAN BE INSTALLED WITH THESE ARGS
-#=================================================
-ynh_script_progression --message="Validating installation parameters..." --weight=2
-
-final_path=/opt/yunohost/$app
-test ! -e "$final_path" || ynh_die --message="This path already contains a folder"
-
-# Register (book) web path
-ynh_webpath_register --app=$app --domain=$domain --path_url=$path_url
 
 #=================================================
 # STORE SETTINGS FROM MANIFEST
@@ -50,17 +36,6 @@ ynh_app_setting_set --app=$app --key=domain --value=$domain
 ynh_app_setting_set --app=$app --key=known_shares --value=$known_shares
 
 #=================================================
-# STANDARD MODIFICATIONS
-#=================================================
-# FIND AND OPEN A PORT
-#=================================================
-ynh_script_progression --message="Finding an available port..." --weight=2
-
-# Find an available port
-port=$(ynh_find_port --port=8008)
-ynh_app_setting_set --app=$app --key=port --value=$port
-
-#=================================================
 # INSTALL DEPENDENCIES
 #=================================================
 ynh_script_progression --message="Installing dependencies..." --weight=23
@@ -68,26 +43,7 @@ ynh_script_progression --message="Installing dependencies..." --weight=23
 ynh_install_nodejs --nodejs_version=$NODEJS_VERSION
 ynh_use_nodejs
 
-#=================================================
-# CREATE DEDICATED USER
-#=================================================
-ynh_script_progression --message="Configuring system user..." --weight=2
-
-# Create a system user
-ynh_system_user_create --username=$app --home_dir="$final_path"
-
-#=================================================
-# CHECK AND CREATE FINAL_PATH
-#=================================================
-ynh_script_progression --message="Setting up and create final app path..." --weight=1
-
-ynh_app_setting_set --app=$app --key=final_path --value=$final_path
-# Create final_path
-mkdir -p "$final_path"
-
-chmod 750 "$final_path"
-chmod -R o-rwx "$final_path"
-chown -R $app:$app "$final_path"
+ynh_npm install -g npm@9.6.0
 
 #=================================================
 # NGINX CONFIGURATION
@@ -104,37 +60,40 @@ ynh_add_nginx_config
 #=================================================
 ynh_script_progression --message="Install Earthstar with npm ci..." --weight=1
 
-ynh_add_config --template="../conf/known_shares.json" --destination="$final_path/known_shares.json"
-ynh_add_config --template="../conf/package-lock.json" --destination="$final_path/package-lock.json"
-ynh_add_config --template="../conf/package.json" --destination="$final_path/package.json"
+ynh_script_progression --message="Copying config files..." --weight=2
 
-pushd $final_path
-	ynh_npm ci --verbose
+ynh_add_config --template="../conf/known_shares.json" --destination="$install_dir/known_shares.json"
+ynh_add_config --template="../conf/npm-shrinkwrap,json" --destination="$install_dir/npm-shrinkwrap.json"
+ynh_add_config --template="../conf/package.json" --destination="$install_dir/package.json"
+
+ynh_script_progression --message="Setting permission for root/.npm..." --weight=2
+
+sudo chown -R 997:997 /root/.npm
+sudo chown -R 997:997 /root/.cache
+
+ynh_script_progression --message="Install better-sqlite3" --weight=2
+
+ynh_npm cache verify
+
+ynh_npm install -g better-sqlite3
+
+ynh_script_progression --message="Starting npm ci..." --weight=2
+
+pushd $install_dir
+	ynh_npm ci
 popd
-
-#=================================================
-# CREATE DATA DIRECTORY
-#=================================================
-ynh_script_progression --message="Creating a data directory..." --weight=1
-
-datadir="/home/yunohost.app/${app}/storage"
-ynh_app_setting_set --app=$app --key=datadir --value=$datadir
-
-mkdir -p $datadir
-
-chmod 750 "$datadir"
-chmod -R o-rwx "$datadir"
-chown -R $app:$app "$datadir"
 
 #=================================================
 # ADD A CONFIGURATION
 #=================================================
-ynh_script_progression --message="Adding a configuration file..." --weight=2
+ynh_script_progression --message="Adding server script..." --weight=2
 
-ynh_add_config --template="../conf/server.js" --destination="$final_path/server.js"
+ynh_print_info --message="Configured known_shares as $known_shares"
 
-chmod 400 "$final_path/server.js"
-chown $app:$app "$final_path/server.js"
+ynh_add_config --template="../conf/server.js" --destination="$install_dir/server.js"
+
+chmod 400 "$install_dir/server.js"
+chown $app:$app "$install_dir/server.js"
 
 #=================================================
 # SETUP SYSTEMD
@@ -169,25 +128,18 @@ ynh_script_progression --message="Starting a systemd service..." --weight=1
 # Start a systemd service
 ynh_systemd_action --service_name=$app --action="start" --log_path="/var/log/$app/$app.log"
 
-#=================================================
-# SETUP SSOWAT
-#=================================================
-ynh_script_progression --message="Configuring permissions..." --weight=2
+# #=================================================
+# # SETUP SSOWAT
+# #=================================================
+# ynh_script_progression --message="Configuring permissions..." --weight=2
 
-# Make app public if necessary
-if [ $is_public -eq 1 ]
-then
-	# Everyone can access the app.
-	# The "main" permission is automatically created before the install script.
-	ynh_permission_update --permission="main" --add="visitors"
-fi
-
-#=================================================
-# RELOAD NGINX
-#=================================================
-# ynh_script_progression --message="Reloading NGINX web server..." --weight=1
-
-# ynh_systemd_action --service_name=nginx --action=reload
+# # Make app public if necessary
+# if [ $is_public -eq 1 ]
+# then
+# 	# Everyone can access the app.
+# 	# The "main" permission is automatically created before the install script.
+# 	ynh_permission_update --permission="main" --add="visitors"
+# fi
 
 #=================================================
 # END OF SCRIPT
