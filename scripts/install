@@ -63,13 +63,13 @@ ynh_script_progression --message="Install Earthstar with npm ci..." --weight=1
 ynh_script_progression --message="Copying config files..." --weight=2
 
 ynh_add_config --template="../conf/known_shares.json" --destination="$install_dir/known_shares.json"
-ynh_add_config --template="../conf/npm-shrinkwrap,json" --destination="$install_dir/npm-shrinkwrap.json"
+ynh_add_config --template="../conf/npm-shrinkwrap.json" --destination="$install_dir/npm-shrinkwrap.json"
 ynh_add_config --template="../conf/package.json" --destination="$install_dir/package.json"
 
 ynh_script_progression --message="Setting permission for root/.npm..." --weight=2
 
 sudo chown -R 997:997 /root/.npm
-sudo chown -R 997:997 /root/.cache
+# sudo chown -R 997:997 /root/.cache
 
 ynh_script_progression --message="Install better-sqlite3" --weight=2
 
