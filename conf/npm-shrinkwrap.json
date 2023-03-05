@@ -1,14 +1,15 @@
 {
   "name": "earthstarserver-ynh",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "earthstarserver-ynh",
-      "version": "1.0.0",
+      "version": "0.1.0",
       "license": "LGPL-3.0-only",
       "dependencies": {
+        "better-sqlite3": "7.5.0",
         "earthstar": "^10.0.2",
         "http": "^0.0.1-security"
       }

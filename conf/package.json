@@ -19,7 +19,8 @@
   "homepage": "https://github.com/johanbove/earthstarserver-ynh#readme",
   "dependencies": {
     "earthstar": "^10.0.2",
-    "http": "^0.0.1-security"
+    "http": "^0.0.1-security",
+    "better-sqlite3": "7.5.0"
   },
   "type": "module"
 }

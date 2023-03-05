@@ -6,6 +6,7 @@ import {
   ExtensionSyncWeb,
   AttachmentDriverFilesystem,
   Server,
+  DocDriverSqlite
 } from "earthstar/node";
 
 // Use the fastest crypto drive available for Node.
@@ -17,18 +18,19 @@ const nodeServer = createServer();
 new Server(
   [
     new ExtensionKnownShares({
-      // Populate with shares from the a known shares list.
+      // Populate with shares from a known shares list.
       knownSharesPath: "known_shares.json",
       onCreateReplica: (shareAddress) => {
+        console.log(`Replica starting for ${shareAddress}`);
         return new Replica({
           driver: {
-            docDriver: new Earthstar.DocDriverSqliteFfi({
+            docDriver: new DocDriverSqlite({
               share: shareAddress,
-              filename: `./data/${shareAddress}.sql`,
+              filename: `/home/yunohost.app/__APP__/${shareAddress}.sql`,
               mode: "create-or-open",
             }),
             attachmentDriver: new AttachmentDriverFilesystem(
-              `./data/${shareAddress}_attachments`
+              `/home/yunohost.app/__APP__/${shareAddress}_attachments`
             ),
           },
         });
@@ -39,4 +41,4 @@ new Server(
   { port: __PORT__, server: nodeServer }
 );
 
-console.log('LISTENING ON PORT __PORT__');
+console.log('EARTHSTAR LISTENING ON PORT __PORT__');
